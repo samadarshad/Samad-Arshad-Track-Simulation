@@ -1,3 +1,7 @@
+%script to investigate emerging gaps between swooping cyclist and his
+%opponent who has a 1-second delay
+
+
 %script to add up wind speeds by their cube rooted power (i.e. adding up
 %kinetic energeies of wind, where KE prop to wind speed cubed - thus when
 %working backwards to find the wind speed, we would get cube root addition)
@@ -50,10 +54,10 @@ u_inf = 10; %this does NOT act as a global variable - it needs to be manually up
 %this is the scaling velocity for u_infinity IN THE AERODYNAMIC WAKES SCALING. divide rider velocity by
 %u_inf to get the multiplication factor for the wake values.
 
-dt =0.02; %seconds per time step - MUST BE GREATER THAN ~0.05 (i.e. a function of minimum velocity) otherwise at each time step, the rider would be rounded to the nearest discrete space and appear to be travelling round the velodrome even at '1m/s'
-num_players =1;
+dt =0.1; %seconds per time step - MUST BE GREATER THAN ~0.05 (i.e. a function of minimum velocity) otherwise at each time step, the rider would be rounded to the nearest discrete space and appear to be travelling round the velodrome even at '1m/s'
+num_players =2;
 riders = cyclist_struct(num_players);
-race_length = 10000;%60/dt;
+race_length = 60/dt;
 scroll_length = 100;%round(race_length/5 + 1);
 x = 1:race_length;
 time_var = (1:race_length).*dt;
@@ -93,25 +97,31 @@ standing_start_velocity = 0.1;
 %if want to de-active the standing-start acceleration, just set velocity to
 %0
 visual_speed = 0.2; %speed up or slow down simulation 
-graphical_display = 0; %turn on/off to turn off graphical draw-now. also need to turn off the individual graphic bools in the section below.
+graphical_display = 1; %turn on/off to turn off graphical draw-now. also need to turn off the individual graphic bools in the section below.
 
 %calibration
 power_loss_callibration = 1;%2.5;%2.5; 
 
 
+time_of_attack = 14/dt;%seconds
+power_of_attack = 1200; %watts
+duration_of_attack = race_length-time_of_attack; %i.e. remainder of the race the cyclists are attacking
+opponent_delay = 0.1/dt; %seconds
+recorded_seperation_distance = zeros(1,race_length);
+
 riders(1).position(1,:) = [-25 0 0];%[0 -50 0];
-% riders(1).power_input = 300*ones(1,race_length);
+ riders(1).power_input = test_power*ones(1,race_length);%[test_power*ones(1,time_of_attack) power_of_attack*ones(1,duration_of_attack) ];
 % riders(1).v_w = test_velo*ones(1,race_length);
 %tamp test
 %riders(1).power_input = s_ramp;
-riders(1).power_input = power1(3295:race_length+3295-1); %jon dibben input
+%riders(1).power_input = power1(3295:race_length+3295-1); %jon dibben input
 %powers (needs jon_dibben_data.mat to be loaded)
 riders(1).color = 'ro';
 riders(1).property_color = 'red';
 
-riders(2).position(1,:) = [-25 5 0];
+riders(2).position(1,:) = [-25 3 0];
 %riders(2).v_w = 14.52*ones(1,race_length);
-riders(2).power_input = test_power*ones(1,race_length);
+riders(2).power_input = test_power*ones(1,race_length);%[test_power*ones(1,time_of_attack+opponent_delay) power_of_attack*ones(1,duration_of_attack-opponent_delay) ];%test_power*ones(1,race_length);
 riders(2).color = 'bo';
 riders(2).property_color = 'blue';
 
@@ -129,12 +139,14 @@ riders(4).property_color = orange;%'yellow';
 
 
 
-swoop_time=3000;
-%lane_ramp = swooping_timed_stepped_ramp(5,2,swoop_time,dt);
-riders(1).lane = 2*ones(1,race_length);%[lane_ramp 2*ones(1,race_length-size(lane_ramp,1))];%[lane_ramp 2*ones(1,race_length-size(lane_ramp,1))];  %[4 4 2*ones(1,race_length-2)];%[lane_ramp 2*ones(1,race_length-size(lane_ramp,1))];%2*ones(1,race_length);%[4 4 2*ones(1,race_length-2)];%[lane_ramp 2*ones(1,race_length-size(lane_ramp,1))];%[4 2*ones(1,race_length-1)]; %kinetic energy from 4th lane applied to rider
+swoop_time=1;
+lane_ramp = swooping_timed_stepped_ramp(5,2,swoop_time,dt);
+% 2*ones(1,race_length);%
+riders(1).lane = 2*ones(1,race_length);%[5*ones(1,time_of_attack) lane_ramp 2*ones(1,race_length-size(lane_ramp,1)-time_of_attack)];%[lane_ramp 2*ones(1,race_length-size(lane_ramp,1))];  %[4 4 2*ones(1,race_length-2)];%[lane_ramp 2*ones(1,race_length-size(lane_ramp,1))];%2*ones(1,race_length);%[4 4 2*ones(1,race_length-2)];%[lane_ramp 2*ones(1,race_length-size(lane_ramp,1))];%[4 2*ones(1,race_length-1)]; %kinetic energy from 4th lane applied to rider
 %riders(1).lane = roundtowardvec(5+(-5.*riders(1).power_input./1200),[2 5]);
 %riders(1).lane = [lane_ramp 2*ones(1,race_length-size(lane_ramp,1))];%[lane_ramp 2*ones(1,race_length-size(lane_ramp,1))];  %[4 4 2*ones(1,race_length-2)];%[lane_ramp 2*ones(1,race_length-size(lane_ramp,1))];%2*ones(1,race_length);%[4 4 2*ones(1,race_length-2)];%[lane_ramp 2*ones(1,race_length-size(lane_ramp,1))];%[4 2*ones(1,race_length-1)]; %kinetic energy from 4th lane applied to rider
-riders(2).lane = 2*ones(1,race_length);%[lane_ramp 2*ones(1,race_length-size(lane_ramp,1))];
+riders(2).lane = 2*ones(1,race_length);%[5*ones(1,time_of_attack+opponent_delay) lane_ramp 2*ones(1,race_length-size(lane_ramp,1)-time_of_attack-opponent_delay)];
+%2*ones(1,race_length);%[lane_ramp 2*ones(1,race_length-size(lane_ramp,1))];
 riders(3).lane = 2*ones(1,race_length);
 riders(4).lane = 2*ones(1,race_length);
 
@@ -353,8 +365,8 @@ plot_power_lost = 0;
 plot_velo = 1;
 plot_accel = 0;
 plot_drag_pwr = 0;
-plot_drag_c = 1;
-plot_v_air = 0;
+plot_drag_c = 0;
+plot_v_air = 1;
 plot_input_pwr = 1;
 %physiological
 plot_AWC = 0;
@@ -866,17 +878,24 @@ while i < race_length
     tic
  
     
-       
-    
+       %give seperation distance between cyclist and their opponent 
+%     [relative_pos_matrix] = get_relative_positiions_matrix([riders(1).position(end,:); riders(2).position(end,:)],lanes,num_players,[1; 2]);
+%     recorded_seperation_distance(i) = relative_pos_matrix(1,2);
+%     if recorded_seperation_distance(i)<=0
+%         i=race_length;
+%     end
     
     for player = 1:num_players
         
-        %test to see if dibben changes his CdA linearly with power 
-        riders(player).Cd_A =  roundtowardvec(riders(1).power_input(i)./1200,[0.25 1]); %0.25 + 0.75 * riders(player).power_input(i)/1.2461e+03;
-        if riders(1).power_input(i) == 0
-            riders(1).lane(i) = 5;
-        end
+%         %test to see if dibben changes his CdA linearly with power 
+%         riders(player).Cd_A =  roundtowardvec(riders(1).power_input(i)./1200,[0.25 1]); %0.25 + 0.75 * riders(player).power_input(i)/1.2461e+03;
+%         if riders(1).power_input(i) == 0
+%             riders(1).lane(i) = 5;
+%         end
         
+
+       
+         
         
         
         

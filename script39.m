@@ -1,3 +1,11 @@
+%script for mass start instead of pursuit
+%script for 8 opponents - using parallel processing
+
+
+%script to investigate emerging gaps between swooping cyclist and his
+%opponent who has a 1-second delay
+
+
 %script to add up wind speeds by their cube rooted power (i.e. adding up
 %kinetic energeies of wind, where KE prop to wind speed cubed - thus when
 %working backwards to find the wind speed, we would get cube root addition)
@@ -30,7 +38,8 @@ new_fast = 1;
 
 if new_fast
     load('Velo_info.mat', 'base', 'MeshSt')
-    load('lanes_premade_5.mat')
+    %load('lanes_premade_5.mat')
+    load('lanes_premade_16.mat')
    % load('wake_premade_default.mat')
    load('wake_premade_optimisedforCdA.mat')
 end
@@ -50,19 +59,19 @@ u_inf = 10; %this does NOT act as a global variable - it needs to be manually up
 %this is the scaling velocity for u_infinity IN THE AERODYNAMIC WAKES SCALING. divide rider velocity by
 %u_inf to get the multiplication factor for the wake values.
 
-dt =0.02; %seconds per time step - MUST BE GREATER THAN ~0.05 (i.e. a function of minimum velocity) otherwise at each time step, the rider would be rounded to the nearest discrete space and appear to be travelling round the velodrome even at '1m/s'
-num_players =1;
+dt =0.1; %seconds per time step - MUST BE GREATER THAN ~0.05 (i.e. a function of minimum velocity) otherwise at each time step, the rider would be rounded to the nearest discrete space and appear to be travelling round the velodrome even at '1m/s'
+num_players =8;
 riders = cyclist_struct(num_players);
-race_length = 10000;%60/dt;
+race_length = 300/dt;
 scroll_length = 100;%round(race_length/5 + 1);
 x = 1:race_length;
 time_var = (1:race_length).*dt;
 swirl_velo = 0;%num_players^(1/3); %approximate relationship between swirlling wind velocity and the number of players
 
-test_power = 300;
+test_power = 400;
 sub_plot_grid_x = 3;
 sub_plot_grid_y = 3;
-num_lanes = 5; %limites the overtaking to within the number of lanes (otherwise it might crash if a rider tries to go into a nonexisting lane).
+num_lanes = 16; %limites the overtaking to within the number of lanes (otherwise it might crash if a rider tries to go into a nonexisting lane).
 
 %overtaking power (TEMPORARY - for next year student to play with)
 overtaking_power = 100;
@@ -85,58 +94,99 @@ end
 
 
 Collisions.detection_distance = 50; %maximum distance to consider for collisions between cyclists i.e. we will ignore any distances greater than 50m.
-overtakingdistance = 20;
-giveupdistance = -40; %, must be less than 125. when 100 meters behind your 'victim' cyclist, then give up and return to our origional lane
+overtakingdistance = 5;
+giveupdistance = -10; %, must be less than 125. when 100 meters behind your 'victim' cyclist, then give up and return to our origional lane
 
 %standing start velocity
-standing_start_velocity = 0.1;
+standing_start_velocity = 0.5;
 %if want to de-active the standing-start acceleration, just set velocity to
 %0
-visual_speed = 0.2; %speed up or slow down simulation 
-graphical_display = 0; %turn on/off to turn off graphical draw-now. also need to turn off the individual graphic bools in the section below.
+visual_speed = 1; %speed up or slow down simulation 
+graphical_display = 1; %turn on/off to turn off graphical draw-now. also need to turn off the individual graphic bools in the section below.
 
 %calibration
 power_loss_callibration = 1;%2.5;%2.5; 
 
 
+time_of_attack = 14/dt;%seconds
+power_of_attack = 1200; %watts
+duration_of_attack = race_length-time_of_attack; %i.e. remainder of the race the cyclists are attacking
+opponent_delay = 0.1/dt; %seconds
+recorded_seperation_distance = zeros(1,race_length);
+
 riders(1).position(1,:) = [-25 0 0];%[0 -50 0];
-% riders(1).power_input = 300*ones(1,race_length);
+ riders(1).power_input = test_power*ones(1,race_length);%[test_power*ones(1,time_of_attack) power_of_attack*ones(1,duration_of_attack) ];
 % riders(1).v_w = test_velo*ones(1,race_length);
 %tamp test
 %riders(1).power_input = s_ramp;
-riders(1).power_input = power1(3295:race_length+3295-1); %jon dibben input
+%riders(1).power_input = power1(3295:race_length+3295-1); %jon dibben input
 %powers (needs jon_dibben_data.mat to be loaded)
 riders(1).color = 'ro';
 riders(1).property_color = 'red';
 
-riders(2).position(1,:) = [-25 5 0];
+riders(2).position(1,:) = [-25 3 0];
 %riders(2).v_w = 14.52*ones(1,race_length);
-riders(2).power_input = test_power*ones(1,race_length);
-riders(2).color = 'bo';
-riders(2).property_color = 'blue';
+riders(2).power_input = test_power*ones(1,race_length);%[test_power*ones(1,time_of_attack+opponent_delay) power_of_attack*ones(1,duration_of_attack-opponent_delay) ];%test_power*ones(1,race_length);
+riders(2).color = 'ro';
+riders(2).property_color = 'none';
 
-riders(3).position(1,:) = [-25 10 0];
+riders(3).position(1,:) = [-25 6 0];
 %riders(3).v_w = test_velo*ones(1,race_length);
 riders(3).power_input = test_power*ones(1,race_length);
-riders(3).color = 'go';
-riders(3).property_color = 'green';
+riders(3).color = 'ro';
+riders(3).property_color = 'none';
 
-riders(4).position(1,:) = [-25 15 0];
+riders(4).position(1,:) = [-25 9 0];
 %riders(4).v_w = test_velo*ones(1,race_length);
 riders(4).power_input = test_power*ones(1,race_length);
-riders(4).color = 'yo';
-riders(4).property_color = orange;%'yellow';
+riders(4).color = 'ro';
+riders(4).property_color = 'none';%'yellow';
 
 
 
-swoop_time=3000;
-%lane_ramp = swooping_timed_stepped_ramp(5,2,swoop_time,dt);
-riders(1).lane = 2*ones(1,race_length);%[lane_ramp 2*ones(1,race_length-size(lane_ramp,1))];%[lane_ramp 2*ones(1,race_length-size(lane_ramp,1))];  %[4 4 2*ones(1,race_length-2)];%[lane_ramp 2*ones(1,race_length-size(lane_ramp,1))];%2*ones(1,race_length);%[4 4 2*ones(1,race_length-2)];%[lane_ramp 2*ones(1,race_length-size(lane_ramp,1))];%[4 2*ones(1,race_length-1)]; %kinetic energy from 4th lane applied to rider
+riders(5).position(1,:) = [-25 1 0];
+%riders(4).v_w = test_velo*ones(1,race_length);
+riders(5).power_input = test_power*ones(1,race_length);
+riders(5).color = 'ko';
+riders(5).property_color = 'blue';%'yellow';
+
+riders(6).position(1,:) = [-25 4 0];
+%riders(4).v_w = test_velo*ones(1,race_length);
+riders(6).power_input = test_power*ones(1,race_length);
+riders(6).color = 'ko';
+riders(6).property_color = 'none';%'yellow';
+
+riders(7).position(1,:) = [-25 7 0];
+%riders4).v_w = test_velo*ones(1,race_length);
+riders(7).power_input = test_power*ones(1,race_length);
+riders(7).color = 'ko';
+riders(7).property_color = 'none';%'yellow';
+
+riders(8).position(1,:) = [-25 10 0];
+%riders(4).v_w = test_velo*ones(1,race_length);
+riders(8).power_input = test_power*ones(1,race_length);
+riders(8).color = 'ko';
+riders(8).property_color = 'none';%'yellow';
+
+
+
+
+
+swoop_time=1;
+lane_ramp = swooping_timed_stepped_ramp(5,2,swoop_time,dt);
+% 2*ones(1,race_length);%
+riders(1).lane = 2*ones(1,race_length);%[5*ones(1,time_of_attack) lane_ramp 2*ones(1,race_length-size(lane_ramp,1)-time_of_attack)];%[lane_ramp 2*ones(1,race_length-size(lane_ramp,1))];  %[4 4 2*ones(1,race_length-2)];%[lane_ramp 2*ones(1,race_length-size(lane_ramp,1))];%2*ones(1,race_length);%[4 4 2*ones(1,race_length-2)];%[lane_ramp 2*ones(1,race_length-size(lane_ramp,1))];%[4 2*ones(1,race_length-1)]; %kinetic energy from 4th lane applied to rider
 %riders(1).lane = roundtowardvec(5+(-5.*riders(1).power_input./1200),[2 5]);
 %riders(1).lane = [lane_ramp 2*ones(1,race_length-size(lane_ramp,1))];%[lane_ramp 2*ones(1,race_length-size(lane_ramp,1))];  %[4 4 2*ones(1,race_length-2)];%[lane_ramp 2*ones(1,race_length-size(lane_ramp,1))];%2*ones(1,race_length);%[4 4 2*ones(1,race_length-2)];%[lane_ramp 2*ones(1,race_length-size(lane_ramp,1))];%[4 2*ones(1,race_length-1)]; %kinetic energy from 4th lane applied to rider
-riders(2).lane = 2*ones(1,race_length);%[lane_ramp 2*ones(1,race_length-size(lane_ramp,1))];
+riders(2).lane = 2*ones(1,race_length);%[5*ones(1,time_of_attack+opponent_delay) lane_ramp 2*ones(1,race_length-size(lane_ramp,1)-time_of_attack-opponent_delay)];
+%2*ones(1,race_length);%[lane_ramp 2*ones(1,race_length-size(lane_ramp,1))];
 riders(3).lane = 2*ones(1,race_length);
 riders(4).lane = 2*ones(1,race_length);
+
+riders(5).lane = 2*ones(1,race_length);
+riders(6).lane = 2*ones(1,race_length);
+riders(7).lane = 2*ones(1,race_length);
+riders(8).lane = 2*ones(1,race_length);
 
 
 
@@ -155,7 +205,7 @@ for pl = 1:num_players
     riders(pl).Ca = 0.267;
     riders(pl).Cy = 0.02;
     riders(pl).r_br = 0.012; %m bearing radius
-    riders(pl).base_Cd_A = 1;%25;%19;
+    riders(pl).base_Cd_A = 0.25;%25;%19;
     riders(pl).Cd_A = riders(pl).base_Cd_A; %to calibrate with real data, ive multiplied by 2 to represent the losses
     riders(pl).Ic1 = 10.168;
     riders(pl).Ic2 = 7.470;
@@ -171,7 +221,7 @@ for pl = 1:num_players
     riders(pl).Tmax = [];% Newton-meters - calculate this using Billy Fitton eqn 64 rearranged
     riders(pl).GR = 3.85; %gear ratio (Andy Tennant, Billy Fitton paper
     %start by assuming small speed/initial kinetic energy
-    riders(pl).v_w(1) = 5;
+    riders(pl).v_w(1) = 0.1;
     riders(pl).w_c_max = 236*(2*pi/60); %cadence rpm. Scott Gardiner (page 95)
     riders(pl).w_c_start = 40*(2*pi/60); %cadence rpm. Scott Gardiner (page 119)
     
@@ -179,13 +229,7 @@ for pl = 1:num_players
     riders(pl).v_air = zeros(1,race_length);
     
     
-    %position control
-    riders(pl).controlpos.on=0;
-    riders(pl).controlpos.follow_id=[];
-    riders(pl).controlpos.rel_dist= -1.5; %-1.5; %meters relative distance
-    riders(pl).controlpos.chase_power = 40; %i.e. maybe criticalpower*1.1? the maximum power the rider would expend in catching up - i.e. either slow and steady catch up, or rapid high power catchup
-    riders(pl).max_power = 30;
-    riders(pl).controlpos.inline_distance = zeros(1,race_length);
+  
     
     
     %collision detection
@@ -202,7 +246,13 @@ for pl = 1:num_players
     riders(pl).AWC = riders(pl).AL + riders(pl).L; %billy fitton: AL + L = AWC
     riders(pl).CP = 280*ones(1,race_length); %maximum oxidative work, analogous to critical power
 
-
+  %position control
+    riders(pl).controlpos.on=0;
+    riders(pl).controlpos.follow_id=[];
+    riders(pl).controlpos.rel_dist= -3; %-1.5; %meters relative distance
+    riders(pl).controlpos.chase_power = 40; %i.e. maybe criticalpower*1.1? the maximum power the rider would expend in catching up - i.e. either slow and steady catch up, or rapid high power catchup
+    riders(pl).max_power = riders(pl).constrained_Pmax;
+    riders(pl).controlpos.inline_distance = zeros(1,race_length);
 end
 
 if Collisions.on
@@ -231,15 +281,68 @@ Collisions.RedoTimeStep = 0;
 end
 
 
-%getting rider 2 to follow rider 1 at 3 meters behind
-%  riders(2).controlpos.on=1;
-%  riders(2).controlpos.follow_id = 1;
-
+% %getting rider 2 to follow rider 1 at 3 meters behind
+% riders(2).controlpos.on=1;
+% riders(2).controlpos.follow_id = 1;
+% riders(2).controlpos.rel_dist= -3;
+% 
 % riders(3).controlpos.on=1;
-% riders(3).controlpos.follow_id = 2;
-%
+% riders(3).controlpos.follow_id = 1;
+% riders(3).controlpos.rel_dist= -6;
+% 
 % riders(4).controlpos.on=1;
-% riders(4).controlpos.follow_id = 3;
+% riders(4).controlpos.follow_id = 1;
+% riders(4).controlpos.rel_dist= -9;
+% 
+% riders(6).controlpos.on=1;
+% riders(6).controlpos.follow_id = 5;
+% riders(6).controlpos.rel_dist= -3;
+% 
+% riders(7).controlpos.on=1;
+% riders(7).controlpos.follow_id = 5;
+% riders(7).controlpos.rel_dist= -6;
+% 
+% riders(8).controlpos.on=1;
+% riders(8).controlpos.follow_id = 5;
+% riders(8).controlpos.rel_dist= -9;
+
+
+
+%%
+%cooporation from team - following their leader
+
+riders(2).controlpos.on=1;
+riders(2).controlpos.follow_id = 1;
+riders(2).controlpos.rel_dist= -2;
+
+riders(3).controlpos.on=1;
+riders(3).controlpos.follow_id = 2;
+riders(3).controlpos.rel_dist= -2;
+
+riders(4).controlpos.on=1;
+riders(4).controlpos.follow_id = 3;
+riders(4).controlpos.rel_dist=-2;
+
+riders(6).controlpos.on=1;
+riders(6).controlpos.follow_id = 5;
+riders(6).controlpos.rel_dist= -2;
+
+riders(7).controlpos.on=1;
+riders(7).controlpos.follow_id = 6;
+riders(7).controlpos.rel_dist= -2;
+
+riders(8).controlpos.on=1;
+riders(8).controlpos.follow_id = 7;
+riders(8).controlpos.rel_dist= -2;
+
+%competitiveness from team leaders = trying to beat the opponent
+riders(5).controlpos.on=1;
+riders(5).controlpos.follow_id = 1;
+riders(5).controlpos.rel_dist= 0;
+
+riders(1).controlpos.on=0;
+riders(1).controlpos.follow_id = 5;
+riders(1).controlpos.rel_dist= +10;
 
 %% function to create a completely new lane (long 1-minute process per lane)
 create_new_lane = 0;
@@ -248,7 +351,7 @@ if create_new_lane
     base = get_contour(height_base);
     
     
-        x_space = 5; %meters from base
+        x_space = 8; %meters from base
         
         x_lane = create_lane(x_space,base,MeshSt); %long 1-minute process
         %get length
@@ -266,17 +369,60 @@ if new
     load('Velo_info.mat', 'base', 'sm_lane', 'sm_red_lane', 'sm_blue_lane', 'MeshSt')
     load('lanes_premade_5.mat')
     %additional lanes
-    %load('sm_5_lane.mat')
+    load_lane=load('sm_1_lane.mat','sm_x_lane')
+    sm_1_lane = load_lane.sm_x_lane;
+    load_lane=load('sm_1_5_lane.mat','sm_x_lane')
+    sm_1_5_lane = load_lane.sm_x_lane;
+    load_lane=load('sm_2_lane.mat','sm_x_lane')
+    sm_2_lane = load_lane.sm_x_lane;
+   
+    load_lane=load('sm_3_lane.mat','sm_x_lane')
+    sm_3_lane = load_lane.sm_x_lane;
+    load_lane=load('sm_3_5_lane.mat','sm_x_lane')
+    sm_3_5_lane = load_lane.sm_x_lane;
+    load_lane=load('sm_4_lane.mat','sm_x_lane')
+    sm_4_lane = load_lane.sm_x_lane;
+    load_lane=load('sm_4_5_lane.mat','sm_x_lane')
+    sm_4_5_lane = load_lane.sm_x_lane;
+    load_lane=load('sm_5_lane.mat')
+    sm_5_lane = load_lane.sm_5_lane;
+    load_lane=load('sm_5_5_lane.mat','sm_x_lane')
+    sm_5_5_lane = load_lane.sm_x_lane;
+    load_lane=load('sm_6_lane.mat','sm_x_lane')
+    sm_6_lane = load_lane.sm_x_lane;
+    load_lane=load('sm_6_5_lane.mat','sm_x_lane')
+    sm_6_5_lane = load_lane.sm_x_lane;
+    load_lane=load('sm_7_lane.mat','sm_x_lane')
+    sm_7_lane = load_lane.sm_x_lane;  
+    
+    
     
     clearvars lanes
-    lanes(1) = lane_to_struct([base.X;base.Y;base.Level*ones(size(base.X))]',[165 42 42]./255);
-    lanes(2) = lane_to_struct(sm_lane,'black');
-    lanes(3) = lane_to_struct(sm_red_lane,'red');
-    lanes(4) = lane_to_struct(sm_blue_lane,'blue');
+    lanes(1) = lane_to_struct([base.X;base.Y;base.Level*ones(size(base.X))]',[165 42 42]./255); %0
     
-    lanes(5) = lane_to_struct(sm_5_lane,'cyan');
+    lanes(2) = lane_to_struct(sm_lane,'black'); %0.2
+    lanes(3) = lane_to_struct(sm_red_lane,'red'); %0.85
     
-    parfor lane_num = 1:5
+    lanes(4) = lane_to_struct(sm_1_lane,'cyan'); %1
+    lanes(5) = lane_to_struct(sm_1_5_lane,'cyan'); %1.5
+    lanes(6) = lane_to_struct(sm_2_lane,'cyan'); %2
+    
+    lanes(7) = lane_to_struct(sm_blue_lane,'blue'); %2.45
+    
+    lanes(8) = lane_to_struct(sm_3_lane,'cyan'); %3
+    lanes(9) = lane_to_struct(sm_3_5_lane,'cyan'); %3.5
+    lanes(10) = lane_to_struct(sm_4_lane,'cyan'); %4
+    lanes(11) = lane_to_struct(sm_4_5_lane,'cyan'); %4.5    
+    lanes(12) = lane_to_struct(sm_5_lane,'cyan'); %5    
+    lanes(13) = lane_to_struct(sm_5_5_lane,'cyan'); %5.5
+    lanes(14) = lane_to_struct(sm_6_lane,'cyan'); %6
+    lanes(15) = lane_to_struct(sm_6_5_lane,'cyan'); %6.5
+    lanes(16) = lane_to_struct(sm_7_lane,'cyan'); %7
+    
+    
+    
+    
+    for lane_num = 1:16
         lanes(lane_num).vectors = struct();
         lanes(lane_num).vectors = get_lane_vects(lanes(lane_num),MeshSt)';
         %get lane centres of curvatures
@@ -353,12 +499,12 @@ plot_power_lost = 0;
 plot_velo = 1;
 plot_accel = 0;
 plot_drag_pwr = 0;
-plot_drag_c = 1;
+plot_drag_c = 0;
 plot_v_air = 0;
 plot_input_pwr = 1;
 %physiological
 plot_AWC = 0;
-plot_constrained_maxP = 0;
+plot_constrained_maxP = 1;
 plot_AL = 0;
 plot_L = 0;
 
@@ -619,6 +765,19 @@ if plot_3d
     plot_lane_st(lanes(3),h)
     plot_lane_st(lanes(4),h)
     plot_lane_st(lanes(5),h)
+    plot_lane_st(lanes(6),h)
+    plot_lane_st(lanes(7),h)
+    plot_lane_st(lanes(8),h)
+    plot_lane_st(lanes(9),h)
+    plot_lane_st(lanes(10),h)
+    plot_lane_st(lanes(11),h)
+    plot_lane_st(lanes(12),h)
+    plot_lane_st(lanes(13),h)
+    plot_lane_st(lanes(14),h)
+    plot_lane_st(lanes(15),h)
+    plot_lane_st(lanes(16),h)
+
+    
     % point_plot(cell2mat([{riders.position}']),cell2mat([{riders.color}']),h);
     for player = 1:num_players
         riders(player).gobjects(4) = point_plot2(riders(player).position(1,:), riders(player).color, h);
@@ -866,16 +1025,26 @@ while i < race_length
     tic
  
     
-       
-    
+       %give seperation distance between cyclist and their opponent 
+%     [relative_pos_matrix] = get_relative_positiions_matrix([riders(1).position(end,:); riders(2).position(end,:)],lanes,num_players,[1; 2]);
+%     recorded_seperation_distance(i) = relative_pos_matrix(1,2);
+%     if recorded_seperation_distance(i)<=0
+%         i=race_length;
+%     end
     
     for player = 1:num_players
         
-        %test to see if dibben changes his CdA linearly with power 
-        riders(player).Cd_A =  roundtowardvec(riders(1).power_input(i)./1200,[0.25 1]); %0.25 + 0.75 * riders(player).power_input(i)/1.2461e+03;
-        if riders(1).power_input(i) == 0
-            riders(1).lane(i) = 5;
+%         %test to see if dibben changes his CdA linearly with power 
+%         riders(player).Cd_A =  roundtowardvec(riders(1).power_input(i)./1200,[0.25 1]); %0.25 + 0.75 * riders(player).power_input(i)/1.2461e+03;
+%         if riders(1).power_input(i) == 0
+%             riders(1).lane(i) = 5;
+%         end
+        
+       if riders(player).power_input(i) > riders(player).constrained_Pmax(i)
+            riders(player).power_input(i) = riders(player).constrained_Pmax(i);
         end
+       
+         
         
         
         
@@ -884,8 +1053,7 @@ while i < race_length
         
         
         
-        
-        if Collisions.on
+%         if Collisions.on
         if ~isempty(riders(player).overtakingvictimID) %this means the cyclist is currently overtaking someone else
             %so need to check whether the overtaking operation is complete
             %by comparing positions
@@ -902,7 +1070,7 @@ while i < race_length
                 
                  fprintf('%s successfully overtook %s.\n',riders(player).property_color,riders(riders(player).overtakingvictimID).property_color);
                  riders(player).lane(i:end) = riders(player).demand_lane(i:end);
-                 riders(player).controlpos.on=0;
+%                  riders(player).controlpos.on=0;
                 riders(player).overtakingvictimID = [];
                  riders(player).power_input(i:end) = riders(player).demand_power(i:end);
                  Collisions = reset_PreviousSignsMatrix(riders,num_players,lanes,Collisions,i);
@@ -918,7 +1086,7 @@ while i < race_length
                 riders(player).overtakingvictimID = [];
                 % update Collisions.PreviousSignsMat!
                 
-                riders(player).controlpos.on=0;
+%                 riders(player).controlpos.on=0;
                 Collisions = reset_PreviousSignsMatrix(riders,num_players,lanes,Collisions,i);
                 riders(player).power_input(i:end) = riders(player).demand_power(i:end);
             else
@@ -932,7 +1100,7 @@ while i < race_length
             %origional lane
             
         end
-        end
+%         end
         
         
         step_size = riders(player).v_w(i)*dt;
@@ -1060,14 +1228,31 @@ while i < race_length
         % power from controlled-distance roders
         
         if riders(player).controlpos.on
-            inline_distance = get_distance(riders(player),riders(riders(player).controlpos.follow_id).position(i,:),lanes,i);
-            riders(player).controlpos.inline_distance(i) = inline_distance;%get_distance(riders(player),riders(riders(player).controlpos.follow_id).position(i,:),lanes);
-            power_input = controlled_position_to_power(riders(player).controlpos.rel_dist,inline_distance,riders(player).p_loss_total(i),riders(player).max_power);
+%             inline_distance = get_distance(riders(player),riders(riders(player).controlpos.follow_id).position(i,:),lanes,i);
+    
+            [relative_pos_matrix] = get_relative_positiions_matrix([riders(player).position(i,:); riders(riders(player).controlpos.follow_id).position(i,:)],lanes,2,[1; 2]);
+            inline_distance = relative_pos_matrix(1,2);
+riders(player).controlpos.inline_distance(i) = inline_distance;%get_distance(riders(player),riders(riders(player).controlpos.follow_id).position(i,:),lanes);
+           
+            riders(player).max_power = riders(player).constrained_Pmax(i);
+            
+           % power_input = controlled_position_to_power(riders(player).controlpos.rel_dist,inline_distance,riders(player).p_loss_total(i),riders(player).max_power);
+           power_input = simple_controller(riders(player).controlpos.rel_dist,inline_distance,riders(player).p_loss_total(i),riders(player).max_power, riders(player).v_w(i),riders(player).mass); 
+           
+           if power_input > riders(player).constrained_Pmax(i)
+                riders(player).power_input(i) = riders(player).constrained_Pmax(i);
+            end
+            
             riders(player).power_input(i) = power_input;% controlled_position_to_power(riders(player).controlpos.rel_dist,inline_distance,riders(player).p_loss_total(i));
             riders(player).demand_power(i) = power_input;
             %any need to implement this? riders(pl).controlpos.chase_power
             %= 40; - we've already got that nice function for varying power
             %based on relative distance, so this shouldnt be needed
+            
+        end
+        
+        if riders(player).power_input(i) > riders(player).constrained_Pmax(i)
+            riders(player).power_input(i) = riders(player).constrained_Pmax(i);
         end
         
         riders(player).power_left(i) = riders(player).power_input(i) - riders(player).p_loss_total(i);

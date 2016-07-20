@@ -73,9 +73,9 @@ end
 % 
 % figure(2)
 % hold off
-% g = surf(x,r,U_r')
-% %axis equal
-% set(g,'edgecolor','none')
+g = surf(x,r,U_r')
+%axis equal
+set(g,'edgecolor','none')
 
 highreswake.velo = U_r;
 highreswake.u = x;
