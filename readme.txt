@@ -10,3 +10,5 @@ There are parameters in the first 'section' of the script (and also 'flags' in a
 These parameters can be changed to your will. Default parameters are already inserted. The parameters should be self-explanatory.
 
 Simulation tool created by Samad Arshad for the fourth year undergraduate project in engineering. Supervised by Dr Geoff Parks and Prof. Tony Purnell.
+
+View simulation preview at: https://www.youtube.com/watch?v=Ff1yangs0lo&feature=youtu.be 
